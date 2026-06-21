@@ -1,13 +1,13 @@
 package com.CordyTech.Puerto.service;
 
 import com.CordyTech.Puerto.dto.PuertoDto;
+import com.CordyTech.Puerto.exception.ResourceNotFoundException;
 import com.CordyTech.Puerto.model.Puerto;
 import com.CordyTech.Puerto.repository.PuertoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,8 +22,10 @@ public class PuertoService {
                 .collect(Collectors.toList());
     }
 
-    public Optional<PuertoDto> obtenerDtoPorId(int id) {
-        return repository.findById(id).map(this::convertToDto);
+    public PuertoDto obtenerDtoPorId(int id) {
+        return repository.findById(id)
+                .map(this::convertToDto)
+                .orElseThrow(() -> new ResourceNotFoundException("Puerto con id " + id + " no encontrado"));
     }
 
     public PuertoDto guardarDto(PuertoDto puertoDto) {
@@ -32,19 +34,20 @@ public class PuertoService {
     }
 
     public PuertoDto actualizarDto(int id, PuertoDto puertoDto) {
-        Puerto existente = repository.findById(id).orElse(null);
+        Puerto existente = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Puerto con id " + id + " no encontrado"));
 
-        if (existente != null) {
-            existente.setNombrePuerto(puertoDto.getNombrePuerto());
-            existente.setTarifaHora(puertoDto.getTarifaHora());
-            existente.setTarifaEslora(puertoDto.getTarifaEslora());
-            existente.setDispo(puertoDto.isDispo());
-            return convertToDto(repository.save(existente));
-        }
-        return null;
+        existente.setNombrePuerto(puertoDto.getNombrePuerto());
+        existente.setTarifaHora(puertoDto.getTarifaHora());
+        existente.setTarifaEslora(puertoDto.getTarifaEslora());
+        existente.setDispo(puertoDto.isDispo());
+        return convertToDto(repository.save(existente));
     }
 
     public void eliminar(int id) {
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("Puerto con id " + id + " no encontrado");
+        }
         repository.deleteById(id);
     }
 

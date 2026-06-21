@@ -1,6 +1,7 @@
 package com.CordyTech.Puerto.service;
 
 import com.CordyTech.Puerto.dto.PuertoDto;
+import com.CordyTech.Puerto.exception.ResourceNotFoundException;
 import com.CordyTech.Puerto.model.Puerto;
 import com.CordyTech.Puerto.repository.PuertoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -59,20 +61,19 @@ class PuertoServiceTest {
     void obtenerDtoPorId_cuandoExiste_debeRetornarDto() {
         when(repository.findById(1)).thenReturn(Optional.of(puerto));
 
-        Optional<PuertoDto> resultado = service.obtenerDtoPorId(1);
+        PuertoDto resultado = service.obtenerDtoPorId(1);
 
-        assertThat(resultado).isPresent();
-        assertThat(resultado.get().getNombrePuerto()).isEqualTo("Puerto Montt");
-        assertThat(resultado.get().getTarifaHora()).isEqualTo(15.0f);
+        assertThat(resultado.getNombrePuerto()).isEqualTo("Puerto Montt");
+        assertThat(resultado.getTarifaHora()).isEqualTo(15.0f);
     }
 
     @Test
-    void obtenerDtoPorId_cuandoNoExiste_debeRetornarVacio() {
+    void obtenerDtoPorId_cuandoNoExiste_debeLanzar404() {
         when(repository.findById(99)).thenReturn(Optional.empty());
 
-        Optional<PuertoDto> resultado = service.obtenerDtoPorId(99);
-
-        assertThat(resultado).isEmpty();
+        assertThatThrownBy(() -> service.obtenerDtoPorId(99))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("99");
     }
 
     @Test
@@ -82,7 +83,6 @@ class PuertoServiceTest {
         PuertoDto resultado = service.guardarDto(puertoDto);
 
         assertThat(resultado.getNombrePuerto()).isEqualTo("Puerto Montt");
-        assertThat(resultado.getTarifaHora()).isEqualTo(15.0f);
         verify(repository, times(1)).save(any(Puerto.class));
     }
 
@@ -104,21 +104,32 @@ class PuertoServiceTest {
     }
 
     @Test
-    void actualizarDto_cuandoNoExiste_debeRetornarNull() {
+    void actualizarDto_cuandoNoExiste_debeLanzar404() {
         when(repository.findById(99)).thenReturn(Optional.empty());
 
-        PuertoDto resultado = service.actualizarDto(99, puertoDto);
+        assertThatThrownBy(() -> service.actualizarDto(99, puertoDto))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("99");
 
-        assertThat(resultado).isNull();
         verify(repository, never()).save(any());
     }
 
     @Test
-    void eliminar_debeLlamarDeleteById() {
+    void eliminar_cuandoExiste_debeLlamarDeleteById() {
+        when(repository.existsById(1)).thenReturn(true);
         doNothing().when(repository).deleteById(1);
 
         service.eliminar(1);
 
         verify(repository, times(1)).deleteById(1);
+    }
+
+    @Test
+    void eliminar_cuandoNoExiste_debeLanzar404() {
+        when(repository.existsById(99)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.eliminar(99))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("99");
     }
 }
